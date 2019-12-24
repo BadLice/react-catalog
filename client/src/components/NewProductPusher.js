@@ -1,6 +1,5 @@
 import React, { useState,useEffect,useRef } from "react";
 import {Select} from "react-dropdown-select"
-import uuidv4 from 'uuid';
 export default function NewProductPusher(props) {
 
 	const [errors,setErrors] = useState({});

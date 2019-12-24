@@ -10,12 +10,14 @@ import './style/w3.css'
 function App() {
   const customHistory = createBrowserHistory();
 
-  const [user,setUser] = useGetUser(); //NOT IMPLEMENTED YET
+	const [user,setUser] = useGetUser(); //NOT IMPLEMENTED YET
 	const [currentSection, setCurrentSection] = useState(undefined);
 	const [sections,setSections] = useGetSectionsFromDb();
 	const [products,setProducts] = useGetProductsFromDb(currentSection);
-	const [chart,setChart] = useGetChartFromDb(user);
+  	const [chart,setChart] = useGetChartFromDb(user);
 
+
+ 
 	//select first section by default
 	useEffect(() => {
 		if(!currentSection && sections.length>0)
@@ -31,72 +33,66 @@ function App() {
   }
 
 	const functions = {
-    setSection: (section) => {
-      //validation
-      let errors = {
-        nameErr: section.name.length <= 0        
-      }
-
-      if(!errors.nameErr) {
-        fetch('/sections/addSection',{
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({section: section})
-        })
-        .then(res => res.json())
-        .then(res => {
-          if(res.success) {
-            section.id = res.sectionId;
-            let s = [...sections];
-            s.push(section)
-            setSections(s);
-          }
-        });
-      }
-
-      return errors;
-    },
+		setSection: (section) => {
+			//validation
+			let errors = {
+				nameErr: section.name.length <= 0        
+			}
+			if(!errors.nameErr) {
+				fetch('/sections/addSection',{
+				method: 'POST',
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({section: section})
+				})
+				.then(res => res.json())
+				.then(res => {
+				if(res.success) {
+					section.id = res.sectionId;
+					let s = [...sections];
+					s.push(section)
+					setSections(s);
+				}
+				});
+			}
+			return errors;
+		},
 		setCurrentSection: (sectionId) => setCurrentSection(sectionId),
 		setProduct: (product,image) => {
-      // let product = JSON.parse(productFormData.get('product'));
-
-	    let p = [...products];
+			let p = [...products];
 			let index = p.map(o => o.id).indexOf(product.id);
 
-      //validation
+			//validation
 			let errors = {
 				moneyErr: product.price === undefined || product.price === '' || product.price === null || isNaN(product.price),
 				avaliableErr: product.avaliable === undefined || product.avaliable === '' || product.avaliable === null || isNaN(product.avaliable) || parseFloat(product.avaliable) % 1 !== 0,
 				nameErr: product.name === undefined || product.name === '' || product.name === null,
-        producerErr: product.producer === undefined || product.producer === '' || product.producer === null,
-        sectionErr : product.sections.length <= 0,
-      }
+				producerErr: product.producer === undefined || product.producer === '' || product.producer === null,
+				sectionErr : product.sections.length <= 0,
+			}
 
-      var productFormData = new FormData();
-      productFormData.append('file', image);
-      productFormData.append('product',JSON.stringify(product));
-      
-      product.price = parseFloat(product.price).toFixed(2);
+			var productFormData = new FormData();
+			productFormData.append('file', image);
+			productFormData.append('product',JSON.stringify(product));
+			
+			product.price = parseFloat(product.price).toFixed(2);
 
 			if(!errors.moneyErr && !errors.avaliableErr && !errors.nameErr && !errors.producerErr && !errors.sectionErr) {
-
 				fetch('/products/addProduct',{
-          method: 'POST',
-          body: productFormData,
-          })
+				method: 'POST',
+				body: productFormData,
+				})
 				.then(res => res.json())
 				.then(res => {
 					if(res.success) {
-            product.id = res.productIt;
+						product.id = res.productIt;
 						p.push(product);
 						setProducts(p);
 					}
 				})
 			}
-
 			return errors;
 	  	},
 		addToChart: (productId) => {
@@ -191,7 +187,7 @@ function useGetChartFromDb(user) {
 				})
 		})
 		.then(res => res.json())
-		.then(res => {setChart(res)})
+		.then(res => setChart(res));
 	},[user.id]);
 
 	return [chart,setChart];

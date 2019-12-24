@@ -10,6 +10,21 @@ router.post('/getSections', function(req, res, next) {
 	});
 });
 
+router.post('/getSellingSections', function(req, res, next) {
+
+	let sql = "SELECT DISTINCT s.id, s.name FROM product p LEFT JOIN product_section_assign p_s ON p.id = p_s.product_id LEFT JOIN section s ON s.id = p_s.section_id WHERE create_user_id = ?";
+	let params = [
+		req.body.userId,
+	]
+	dbPool.execQuery(next,sql,params, function (err, result) {
+        res.send({
+			success: true,
+			sections: result,
+		})
+        res.end();
+	});
+});
+
 router.post('/existsSection', function(req, res, next) {
 
 	let sql = "SELECT * FROM section WHERE name = ?";

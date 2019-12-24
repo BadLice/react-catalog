@@ -1,17 +1,16 @@
-import React, { useState,useEffect } from "react";
+import React from "react";
 import Section from './Section.js'
 import Product from './Product.js'
 
 export default function SellingCatalog(props) {
     return (
         <div className="w3-container no-paddings">
-            
             <div className="w3-sidebar w3-bar-block section-container">
                 <div className="w3-bar-item w3-green">
                     Categories
                 </div>
                 {
-                    props.states.sections.map(s => 
+                    props.sellingSections.map(s => 
                         <Section key={s.id} section={s} current={s.id === props.states.currentSection} functions={props.functions}/>
                     )
                 }
@@ -21,11 +20,12 @@ export default function SellingCatalog(props) {
                     <h6>Products you are selling</h6>
                 </div>
                 {
-                    props.states.products.filter(p => p.createdUserID==props.states.user.id).map(p =>
-                        <Product key={p.id} product={p} functions={props.functions} hideBuyButton={true}/>
+                    props.sellingProducts.map(p =>
+                        <Product key={p.id} product={p} functions={props.functions} states={props.states} setEditProductId={props.setEditProductId} modalController={props.editProductModal} saveProduct={props.saveProduct} hideBuyButton={true} canWrite={true}/>
                     )
                 }
             </div>
-        </div>);
+        </div>
+    );
 }
 
