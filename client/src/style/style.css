@@ -87,3 +87,7 @@
 .new-product-modal {
     height: 80%; 
 }
+
+.no-underline {
+    text-decoration: none !important; 
+}

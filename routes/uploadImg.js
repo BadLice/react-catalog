@@ -18,7 +18,10 @@ router.post('/', (req, res, next) => {
         log.info('Uploaded ' + file.name);
     });
 
-    res.send({success:true});
+    form.on('end', () => {
+        res.send({success:true});
+        res.end(req.session);
+    });
 });
 
 

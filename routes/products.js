@@ -8,7 +8,7 @@ router.post('/getProducts', function(req, res, next) {
 	]
 	dbPool.execQuery(next,sql,params, function (err, result) {
 		res.send(result);
-		res.end();
+		res.end(req.session);
 	});
 });
 
@@ -89,7 +89,7 @@ router.post('/saveProduct', function(req, res, next) {
 
 				dbPool.execQuery(next,sqlSections.slice(0,-1),paramsSections, function (err, result) {		
 					res.send({success:true});
-					res.end();
+					res.end(req.session);
 				});
 			});
 		});
@@ -99,17 +99,18 @@ router.post('/saveProduct', function(req, res, next) {
 
 
 router.post('/getSellingProducts', function(req, res, next) {
+	let user = getUser(req.session);
 	let sql = "SELECT p.id,p.name,p.producer,p.price,p.avaliable,p.create_user_id as \"createdUserID\" FROM product p LEFT JOIN product_section_assign p_s ON p_s.product_id = p.id LEFT JOIN section s ON s.id = p_S.section_id WHERE s.id = ? AND p.create_user_id= ?";
 	let params = [
 		req.body.sectionId,
-		req.body.userId,
+		user.id,
 	]
 	dbPool.execQuery(next,sql,params, function (err, result) {
         res.send({
 			success: true,
 			products: result,
 		})
-        res.end();
+        res.end(req.session);
 	});
 });
 
@@ -128,12 +129,13 @@ router.post('/getProduct', function(req, res, next) {
 				success:true,
 				product: p,
 			});
-			res.end();
+			res.end(req.session);
 		});
 	});
 });
 
 router.post('/addProduct', function(req, res, next) {
+	let user = getUser(req.session);
 	let prodId = uuid();
 	let product = {};
 	var form = new formidable.IncomingForm();
@@ -166,7 +168,7 @@ router.post('/addProduct', function(req, res, next) {
 			product.producer,
 			product.price,
 			product.avaliable,
-			'TEST'
+			user.id
 		]
 
 		dbPool.execQuery(next,sqlProd,paramsProd, function (err, result) {
@@ -181,7 +183,7 @@ router.post('/addProduct', function(req, res, next) {
 
 			dbPool.execQuery(next,sqlSections.slice(0,-1),paramsSections, function (err, result) {		
 				res.send({success:true,id: prodId});
-				res.end();
+				res.end(req.session);
 			});
 		});
 	});

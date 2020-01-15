@@ -15,10 +15,9 @@ var app = express();
 
 app.use(helmet());
 app.use(logger('dev'));
-app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
 app.use(express.json());
+app.use(cookieParser());
 
 //directory where to store images
 app.use('./client/public/product-images',express.static('product-images'));
@@ -26,8 +25,8 @@ app.use('./client/public/product-images',express.static('product-images'));
 
 app.use(cookieSession({
 	name: 'session',
-  secret: process.env.COOKIE_SECRET,
-  signed: true,
+	secret: process.env.COOKIE_SECRET,
+	signed: true,
 	maxAge: 60 * 60 * 1000 // 1 hour
 }));
 
@@ -35,10 +34,12 @@ app.use(cookieSession({
 var products = require('./routes/products.js');
 var chart = require('./routes/chart.js');
 var sections = require('./routes/sections.js');
+var user = require('./routes/user.js');
 
 app.use('/products', products);
 app.use('/chart', chart);
 app.use('/sections', sections);
+app.use('/user', user);
 
 
 //test upload img
@@ -91,7 +92,9 @@ setInterval(() => {
 getDirectories = (source) =>
   fs.readdirSync(source, { withFileTypes: true })
     .filter(dirent => dirent.isDirectory())
-    .map(dirent => dirent.name)
+	.map(dirent => dirent.name)
+	
+getUser = (session) => session.user ? JSON.parse(session.user) : null;
 
 /*
 -------- NOT IMPLEMENTED YET --------
@@ -182,12 +185,21 @@ rimraf = (dir_path) => {
 // 	});
 // }
 
-dbPool.execQuery = (next,sql,params,callback)  => {
+dbPool.execQueryWithSessionValidation = (next,sql,params,callback)  => { //NOT IMPLEMENTED YET
 	dbPool.query(sql, params, function (err, result) {
 		if(err)
             next(err);
      	else
         	callback(err, result);
+	});
+}
+
+dbPool.execQuery = (next, sql, params, callback) => {
+	dbPool.query(sql, params, function (err, result) {
+		if (err)
+			next(err);
+		else
+			callback(err, result);
 	});
 }
 

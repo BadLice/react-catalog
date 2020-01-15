@@ -1,4 +1,5 @@
 import React, { useState,useEffect } from "react";
+import NavBar from "./NavBar.js"
 import NewProductPusher from './NewProductPusher.js'
 import NewSectionPusher from './NewSectionPusher.js'
 import SellingCatalog from './SellingCatalog.js';
@@ -38,10 +39,6 @@ export default function Editing(props) {
             .then(res => {
                 if(res.success) {
                     setUpdateSellingProducts(!updateSellingProducts);
-                    // let p = [...sellingProducts];
-                    // let index = p.map(x => x.id).indexOf(product.id);
-                    // p[index] = product;
-                    // setSellingProducts(p);
                 }
             });
         }
@@ -49,36 +46,39 @@ export default function Editing(props) {
     }
 
     return (
-        <div>
+        <>
+            <NavBar states={props.states} functions={props.functions} />
+            <div>
 
-            <div className="w3-bar w3-grey">
-                <div className="w3-bar-item w3-button w3-right w3-pink" onClick={() => addProductModal.open()}>
-                 Add product
+                <div className="w3-bar w3-grey">
+                    <div className="w3-bar-item w3-button w3-right w3-pink" onClick={() => addProductModal.open()}>
+                    Add product
+                    </div>
+                    {
+                        props.states.user.privileges === 0 && (
+                            <W3Modal
+                                modalClassName = "w3-light-grey w3-animate-opacity w3-center"
+                                setIsOpen = {setIsSectionModalOpen}
+                                isOpen = {isSectionModalOpen}
+                                btnClassName = "w3-bar-item w3-button w3-right w3-red"
+                                btnText = "Add category"
+                                header={<><h2>Add category</h2></>}
+                                headerClassName="w3-red w3-center"
+                                content = {
+                                    <NewSectionPusher functions={props.functions} states={props.states} isOpen={isSectionModalOpen} setIsOpen={setIsSectionModalOpen}/>
+                                }
+                            />
+                        )                       
+                    }
                 </div>
-                {
-                    props.states.user.privileges === 0 && (
-                        <W3Modal
-                            modalClassName = "w3-light-grey w3-animate-opacity w3-center"
-                            setIsOpen = {setIsSectionModalOpen}
-                            isOpen = {isSectionModalOpen}
-                            btnClassName = "w3-bar-item w3-button w3-right w3-red"
-                            btnText = "Add category"
-                            header={<><h2>Add category</h2></>}
-                            headerClassName="w3-red w3-center"
-                            content = {
-                                <NewSectionPusher functions={props.functions} states={props.states} isOpen={isSectionModalOpen} setIsOpen={setIsSectionModalOpen}/>
-                            }
-                        />
-                    )                       
-                }
-            </div>
 
-            <SellingCatalog functions={props.functions} states={props.states} editProductModal={editProductModal} setEditProductId={setEditProductId} sellingProducts={sellingProducts} setSellingProducts={setSellingProducts} sellingSections={sellingSections} setSellingSections={setSellingSections} saveProduct={saveProduct}/>
+                <SellingCatalog functions={props.functions} states={props.states} editProductModal={editProductModal} setEditProductId={setEditProductId} sellingProducts={sellingProducts} setSellingProducts={setSellingProducts} sellingSections={sellingSections} setSellingSections={setSellingSections} saveProduct={saveProduct}/>
 
-            <div ref={addProductModal.ref} className="w3-modal">
-                <NewProductPusher functions={props.functions} states={props.states} modalController={addProductModal}/>
+                <div ref={addProductModal.ref} className="w3-modal">
+                    <NewProductPusher functions={props.functions} states={props.states} modalController={addProductModal}/>
+                </div>
             </div>
-        </div>
+        </>
     );
 	
 }

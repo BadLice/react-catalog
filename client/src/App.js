@@ -1,38 +1,68 @@
-import React, { useState,useEffect,useRef } from "react";
-import {Switch,Route,Router} from "react-router";
-import { createBrowserHistory } from "history";
+import React, { useState, useEffect, } from "react";
+import {Switch,	Route, Redirect, useHistory } from "react-router-dom";
 import Catalog from './components/Catalog.js';
 import Editing from './components/Editing.js';
-import NavBar from './components/NavBar.js';
+import Login from './components/Login.js';
+
 import './style/style.css'
 import './style/w3.css'
+import './style/main.css'
+import './style/util.css'
+import "./vendor/bootstrap/css/bootstrap.min.css"
+import "./fonts/font-awesome-4.7.0/css/font-awesome.min.css"
+import "./fonts/iconic/css/material-design-iconic-font.min.css"
+import "./vendor/animate/animate.css"
+import "./vendor/css-hamburgers/hamburgers.min.css"
+import "./vendor/animsition/css/animsition.min.css"
+import "./vendor/select2/select2.min.css"
+import "./vendor/daterangepicker/daterangepicker.css"
 
-function App() {
-  const customHistory = createBrowserHistory();
+const SHA256 = require("crypto-js/sha256");
 
-	const [user,setUser] = useGetUser(); //NOT IMPLEMENTED YET
+export default (props) => {
+	var history = useHistory();
+	const [isAuthenticated, setAuthenticated] = useAuth();
+	const [user,setUser] = useGetUserData(history);
 	const [currentSection, setCurrentSection] = useState(undefined);
 	const [sections,setSections] = useGetSectionsFromDb();
 	const [products,setProducts] = useGetProductsFromDb(currentSection);
-  	const [chart,setChart] = useGetChartFromDb(user);
-
-
+	const [chart,setChart] = useGetChartFromDb();
  
 	//select first section by default
 	useEffect(() => {
 		if(!currentSection && sections.length>0)
-			setCurrentSection(sections[0].id);
-  },[sections.length]);
+			setCurrentSection(sections[sections.map(s => s.hasProducts).indexOf(1)].id);
+	}, [sections.length]);
   
-  const states = {
-    user: user,setUser: setUser,
-    currentSection: currentSection,setCurrentSection: setCurrentSection,
-    sections:sections,setSections:setSections,
-    products:products,setProducts:setProducts,
-    chart:chart,setChart:setChart,
-  }
-
+	const states = {
+		history: history,
+		user: user, setUser: setUser,
+		currentSection: currentSection,setCurrentSection: setCurrentSection,
+		sections:sections,setSections:setSections,
+		products:products,setProducts:setProducts,
+		chart:chart,setChart:setChart,
+	}
 	const functions = {
+		login: (username,password) => {
+			fetch('/user/login', { //server tries to login and sets catalog_user cookie
+				method: 'POST',
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ username: username, password: SHA256(password).toString() })
+			})
+			.then(res => res.json())
+			.then(res => {
+				if (res.success) {
+					setAuthenticated(true);
+					let from = history.location.state ? history.location.state.from : null;
+					history.push( from ? from : '/catalog');
+				} else {
+					setAuthenticated(false);
+				}
+			});
+		},
 		setSection: (section) => {
 			//validation
 			let errors = {
@@ -49,12 +79,12 @@ function App() {
 				})
 				.then(res => res.json())
 				.then(res => {
-				if(res.success) {
-					section.id = res.sectionId;
-					let s = [...sections];
-					s.push(section)
-					setSections(s);
-				}
+					if(res.success) {
+						section.id = res.sectionId;
+						let s = [...sections];
+						s.push(section)
+						setSections(s);
+					}
 				});
 			}
 			return errors;
@@ -107,8 +137,7 @@ function App() {
 							'Content-Type': 'application/json'
 						},
 						body: JSON.stringify({
-							productId: productId,
-							userId: user.id
+							productId: productId
 							})
 					})
 					.then(res => res.json())
@@ -131,7 +160,6 @@ function App() {
 				  },
 				  body: JSON.stringify({
 					  productId: productId,
-					  userId: user.id
 					})
 			})
 			.then(res => res.json())
@@ -143,21 +171,52 @@ function App() {
 			
 		},
 	}
+	
+	return (
+		<div className="App">
+			<Switch>
+				<PrivateRoute path="/catalog" isAuthenticated={isAuthenticated}>
+					<Catalog {...props} functions={functions} states={states} />
+				</PrivateRoute>
 
-  return (
-    <Router history={customHistory}>
-      <div className="App">
-        <NavBar/>
-        <Switch>
-          <Route path="/catalog" render={(props) => <Catalog {...props} functions={functions} states={states}/> }/>
-          <Route path="/editing" render={(props) => <Editing {...props} functions={functions} states={states}/> }/>
-        </Switch>
-      </div>
-    </Router>
-  );
+				<PrivateRoute path="/editing" isAuthenticated={isAuthenticated}>
+					<Editing {...props} functions={functions} states={states} />
+				</PrivateRoute>
+
+				<Route path="/login" render={(props) => <Login {...props} functions={functions} states={states} />} />
+				<Route path="/" render={(props) => <Login {...props} functions={functions} states={states} />} />
+			</Switch>
+		</div>
+	);
 }
-// ----------------------------- connection to db -----------------------------
 
+// A wrapper for <Route> that redirects to the login screen if you're not yet authenticated.
+const PrivateRoute = ({ children, ...rest }) => {
+	if(rest.isAuthenticated !== undefined && rest.isAuthenticated !== null) {
+		return (
+			<Route
+				{...rest}
+				render={
+					props =>
+						 rest.isAuthenticated ? (
+						children
+					) : (
+						<Redirect
+							to={{
+								pathname: "/login",
+								state: { from: props.location }
+							}}
+						/>
+					)
+				}
+			/>
+		);
+	} else {
+		return <></>;
+	}
+}
+
+// ----------------------------- connection to db -----------------------------
 function useGetSectionsFromDb() {
 	const [sections,setSections] = useState([]);
 
@@ -172,7 +231,7 @@ function useGetSectionsFromDb() {
 	return [sections,setSections];
 }
 
-function useGetChartFromDb(user) {
+function useGetChartFromDb() {
 	const [chart,setChart] = useState([]);
 
 	useEffect(()=> {
@@ -181,14 +240,11 @@ function useGetChartFromDb(user) {
 			headers: {
 				'Accept': 'application/json',
 				'Content-Type': 'application/json'
-			  },
-			  body: JSON.stringify({
-				  userId: user.id
-				})
+			  }
 		})
 		.then(res => res.json())
 		.then(res => setChart(res));
-	},[user.id]);
+	},[]);
 
 	return [chart,setChart];
 }
@@ -253,19 +309,46 @@ function useGetProductsFromDb(currentSection) {
 	return [products,setProducts];
 }
 
-function useGetUser() {
-	const [user, setUser] = useState({});
+function useAuth() {
+	const [isAuthenticated, setAuthenticated] = useState();
 
 	useEffect(() => {
-		setUser({
-			id: 'TEST',
-			username: 'badLice',
-      balance: 897.15,
-      privileges: 0
+		fetch('/user/authenticate', {
+			method: 'POST',
+		})
+		.then(res => res.json())
+		.then(res => {
+			if (res.success) {
+				setAuthenticated(true);
+			} else {
+				setAuthenticated(false);
+			}
 		});
-	},[])
+	}, []);
+
+	return  [isAuthenticated, setAuthenticated];
+}
+
+function useGetUserData(history) {
+	const [user, setUser] = useState(-1);
+	
+	useEffect(() => {
+		fetch('/user/getUserData', {
+			method: 'POST',
+		})
+		.then(res => res.json())
+		.then(res => {
+			if (res.success) {
+				setUser({
+					id: res.user.id,
+					username: res.user.username,
+					balance: parseFloat(res.user.balance),
+					privileges: parseInt(res.user.privileges),
+				})
+			}
+		});
+	}, [history.location.pathname]);
 
 	return [user, setUser];
 }
-export default App;
 

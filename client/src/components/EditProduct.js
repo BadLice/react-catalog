@@ -86,6 +86,8 @@ export default function EditProduct(props) {
 						<input className={"w3-input "+(errors.producerErr ? 'w3-border w3-border-red' : '')} ref={pProducer} type="text" placeholder="Producer"/>
 						<input className={"w3-input "+(errors.moneyErr ? 'w3-border w3-border-red' : '')} ref={pPrice} type="text" placeholder="Price"/>
 						<input className={"w3-input "+(errors.avaliableErr ? 'w3-border w3-border-red' : '')} ref={pAvaliable} type="text" placeholder="Pieces avaliable"/>
+
+						
 						<Select className={"w3-input w3-white dropdown-select"+(errors.sectionErr ? 'w3-border w3-border-red' : '')} multi options={sectionDropdownOptions} dropdownHandle={false} values={pSections} onChange={(values) => setPSections(values)} placeholder="Type a section..."/>
 					</div>
 					<div className="w3-margin">

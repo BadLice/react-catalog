@@ -24,7 +24,7 @@ export default function Product(props) {
 				<div>
 					<div className="w3-margin product-image-container">
 						<img ref={pLogo} src={"/products-images/"+props.product.id+"/product-logo.jpg?"+Date.now()} className="product-image" onError={() => pLogo.current.src="/products-images/default/product-logo.jpg"}/> {/* Date.now() forces the refresh of the image when it is changed by the server */}
-						</div>
+					</div>
 					<div className="w3-right">
 						<h6 className="w3-text-pink"><b>{props.product.producer}</b></h6>
 						<p className="w3-text-green" ref={pPrice}>{props.product.price} €</p>
