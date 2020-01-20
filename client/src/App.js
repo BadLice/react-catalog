@@ -50,7 +50,7 @@ export default (props) => {
 					'Accept': 'application/json',
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify({ username: username, password: SHA256(password).toString() })
+				body: JSON.stringify({ username: username, password: password }) //only HTTPS!!! (http only for development build)
 			})
 			.then(res => res.json())
 			.then(res => {
@@ -58,6 +58,26 @@ export default (props) => {
 					setAuthenticated(true);
 					let from = history.location.state ? history.location.state.from : null;
 					history.push( from ? from : '/catalog');
+				} else {
+					setAuthenticated(false);
+				}
+			});
+		},
+		singup: (username, password) => {
+			fetch('/user/signup', { //server tries to login and sets catalog_user cookie
+				method: 'POST',
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ username: username, password: password }) //only HTTPS!!! (http only for development build)
+			})
+			.then(res => res.json())
+			.then(res => {
+				if (res.success) {
+					setAuthenticated(true);
+					let from = history.location.state ? history.location.state.from : null;
+					history.push(from ? from : '/catalog');
 				} else {
 					setAuthenticated(false);
 				}

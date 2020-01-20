@@ -9,8 +9,9 @@ uuid = require('uuid/v4');
 formidable = require('formidable');
 fs = require('fs');
 var path = require('path');
+bcrypt = require('bcrypt');
 require('dotenv').config(); //package for environment variables (create a file named .env in root directory and set there the environment variables, then access them with process.env.VAR_NAME; add .env file to .gitignore)
-
+saltRounds = 10;
 var app = express();
 
 app.use(helmet());

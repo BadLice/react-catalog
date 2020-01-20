@@ -40,6 +40,12 @@ export default (props) => {
 						    </button>
                         </div>
 
+                        <div className="container-login100-form-btn">
+                            <button className="login100-form-btn" onClick={() => props.functions.singup(usernameRef.current.value.trim(), passwordRef.current.value.trim())}>
+                                Signup
+						    </button>
+                        </div>
+
                         <div className="text-center p-t-90">
                             {/* <a className="txt1" href="#">
                                 Forgot Password?
