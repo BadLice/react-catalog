@@ -69,7 +69,7 @@ export default function NewProductPusher(props) {
 				<h2>Add product</h2>
 			</header>
 			<div className="w3-container w3-margin ">
-				<div className="w3-display-middle  new-product-card div-center">
+				<div className="w3-display-middle new-product-card div-center">
 					<form ref={pImg}>
 						<div className="w3-container w3-center">
 							<div className="w3-margin ">

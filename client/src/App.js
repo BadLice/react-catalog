@@ -1,8 +1,9 @@
 import React, { useState, useEffect, } from "react";
-import {Switch,	Route, Redirect, useHistory } from "react-router-dom";
+import { Switch, Route, Redirect, useHistory } from "react-router-dom";
 import Catalog from './components/Catalog.js';
 import Editing from './components/Editing.js';
 import Login from './components/Login.js';
+import Balance from './components/Balance.js';
 
 import './style/style.css'
 import './style/w3.css'
@@ -22,28 +23,31 @@ const SHA256 = require("crypto-js/sha256");
 export default (props) => {
 	var history = useHistory();
 	const [isAuthenticated, setAuthenticated] = useAuth();
-	const [user,setUser] = useGetUserData(history);
+	let [userToUpdate, setUserToUpdate] = useState(false);
+	const [user, setUser] = useGetUserData(history, userToUpdate);
 	const [currentSection, setCurrentSection] = useState(undefined);
-	const [sections,setSections] = useGetSectionsFromDb();
-	const [products,setProducts] = useGetProductsFromDb(currentSection);
-	const [chart,setChart] = useGetChartFromDb();
- 
+	const [sections, setSections] = useGetSectionsFromDb();
+	const [products, setProducts] = useGetProductsFromDb(currentSection);
+	const [chart, setChart] = useGetChartFromDb();
+
 	//select first section by default
 	useEffect(() => {
-		if(!currentSection && sections.length>0)
+		if (!currentSection && sections.length > 0)
 			setCurrentSection(sections[sections.map(s => s.hasProducts).indexOf(1)].id);
 	}, [sections.length]);
-  
+
+	const updateUser = () => setUserToUpdate(!userToUpdate);
+
 	const states = {
 		history: history,
 		user: user, setUser: setUser,
-		currentSection: currentSection,setCurrentSection: setCurrentSection,
-		sections:sections,setSections:setSections,
-		products:products,setProducts:setProducts,
-		chart:chart,setChart:setChart,
+		currentSection: currentSection, setCurrentSection: setCurrentSection,
+		sections: sections, setSections: setSections,
+		products: products, setProducts: setProducts,
+		chart: chart, setChart: setChart,
 	}
 	const functions = {
-		login: (username,password) => {
+		login: (username, password) => {
 			fetch('/user/login', { //server tries to login and sets catalog_user cookie
 				method: 'POST',
 				headers: {
@@ -52,16 +56,16 @@ export default (props) => {
 				},
 				body: JSON.stringify({ username: username, password: password }) //only HTTPS!!! (http only for development build)
 			})
-			.then(res => res.json())
-			.then(res => {
-				if (res.success) {
-					setAuthenticated(true);
-					let from = history.location.state ? history.location.state.from : null;
-					history.push( from ? from : '/catalog');
-				} else {
-					setAuthenticated(false);
-				}
-			});
+				.then(res => res.json())
+				.then(res => {
+					if (res.success) {
+						setAuthenticated(true);
+						let from = history.location.state ? history.location.state.from : null;
+						history.push(from ? from : '/catalog');
+					} else {
+						setAuthenticated(false);
+					}
+				});
 		},
 		singup: (username, password) => {
 			fetch('/user/signup', { //server tries to login and sets catalog_user cookie
@@ -72,45 +76,85 @@ export default (props) => {
 				},
 				body: JSON.stringify({ username: username, password: password }) //only HTTPS!!! (http only for development build)
 			})
-			.then(res => res.json())
-			.then(res => {
-				if (res.success) {
-					setAuthenticated(true);
-					let from = history.location.state ? history.location.state.from : null;
-					history.push(from ? from : '/catalog');
-				} else {
-					setAuthenticated(false);
-				}
-			});
+				.then(res => res.json())
+				.then(res => {
+					if (res.success) {
+						setAuthenticated(true);
+						let from = history.location.state ? history.location.state.from : null;
+						history.push(from ? from : '/catalog');
+					} else {
+						setAuthenticated(false);
+					}
+				});
 		},
-		setSection: (section) => {
-			//validation
-			let errors = {
-				nameErr: section.name.length <= 0        
-			}
-			if(!errors.nameErr) {
-				fetch('/sections/addSection',{
+		rechargeWithCard: (number, holder, expiration, cvv, amount, setProgress, setErrors, setActiveTab, setLastAmount) => {
+			fetch('/user/rechargeCard', {
 				method: 'POST',
 				headers: {
 					'Accept': 'application/json',
 					'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({section: section})
+				},
+				body: JSON.stringify({
+					number: number,
+					holder: holder,
+					expiration: expiration,
+					cvv: cvv,
+					amount: amount
 				})
+			})
 				.then(res => res.json())
 				.then(res => {
-					if(res.success) {
-						section.id = res.sectionId;
-						let s = [...sections];
-						s.push(section)
-						setSections(s);
-					}
+					//increase progress bar (fake loading..)
+					let progress = 0;
+					let elaborateProgress = setInterval(() => {
+						if (progress < 100) {
+							setProgress(progress)
+							progress += Math.random() * 30
+						} else {
+							if (res.success) {
+								setProgress(100);
+								setLastAmount(amount);
+								updateUser();
+								setErrors({});
+								setActiveTab('recharged');
+							} else {
+								setProgress(0);
+								setErrors(res.errors);
+							}
+							clearInterval(elaborateProgress)
+						}
+					}, 500);
+					//-------------
 				});
+		},
+		setSection: (section) => {
+			//validation
+			let errors = {
+				nameErr: section.name.length <= 0
+			}
+			if (!errors.nameErr) {
+				fetch('/sections/addSection', {
+					method: 'POST',
+					headers: {
+						'Accept': 'application/json',
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({ section: section })
+				})
+					.then(res => res.json())
+					.then(res => {
+						if (res.success) {
+							section.id = res.sectionId;
+							let s = [...sections];
+							s.push(section)
+							setSections(s);
+						}
+					});
 			}
 			return errors;
 		},
 		setCurrentSection: (sectionId) => setCurrentSection(sectionId),
-		setProduct: (product,image) => {
+		setProduct: (product, image) => {
 			let p = [...products];
 			let index = p.map(o => o.id).indexOf(product.id);
 
@@ -120,37 +164,37 @@ export default (props) => {
 				avaliableErr: product.avaliable === undefined || product.avaliable === '' || product.avaliable === null || isNaN(product.avaliable) || parseFloat(product.avaliable) % 1 !== 0,
 				nameErr: product.name === undefined || product.name === '' || product.name === null,
 				producerErr: product.producer === undefined || product.producer === '' || product.producer === null,
-				sectionErr : product.sections.length <= 0,
+				sectionErr: product.sections.length <= 0,
 			}
 
 			var productFormData = new FormData();
 			productFormData.append('file', image);
-			productFormData.append('product',JSON.stringify(product));
-			
+			productFormData.append('product', JSON.stringify(product));
+
 			product.price = parseFloat(product.price).toFixed(2);
 
-			if(!errors.moneyErr && !errors.avaliableErr && !errors.nameErr && !errors.producerErr && !errors.sectionErr) {
-				fetch('/products/addProduct',{
-				method: 'POST',
-				body: productFormData,
+			if (!errors.moneyErr && !errors.avaliableErr && !errors.nameErr && !errors.producerErr && !errors.sectionErr) {
+				fetch('/products/addProduct', {
+					method: 'POST',
+					body: productFormData,
 				})
-				.then(res => res.json())
-				.then(res => {
-					if(res.success) {
-						product.id = res.productIt;
-						p.push(product);
-						setProducts(p);
-					}
-				})
+					.then(res => res.json())
+					.then(res => {
+						if (res.success) {
+							product.id = res.productIt;
+							p.push(product);
+							setProducts(p);
+						}
+					})
 			}
 			return errors;
-	  	},
+		},
 		addToChart: (productId) => {
 			let p = [...products];
 			let index = p.map(o => o.id).indexOf(productId);
 			functions.isInChart(productId).then((alreadyInChart) => {
-				if(!alreadyInChart) {
-					fetch('/chart/addToChart',{
+				if (!alreadyInChart) {
+					fetch('/chart/addToChart', {
 						method: 'POST',
 						headers: {
 							'Accept': 'application/json',
@@ -158,40 +202,40 @@ export default (props) => {
 						},
 						body: JSON.stringify({
 							productId: productId
-							})
+						})
 					})
-					.then(res => res.json())
-					.then(res => {
-						if(res.success) {
-							let c = [...chart];
-							c.push(productId);
-							setChart(c);
-						}
-					})
+						.then(res => res.json())
+						.then(res => {
+							if (res.success) {
+								let c = [...chart];
+								c.push(productId);
+								setChart(c);
+							}
+						})
 				}
 			});
 		},
 		isInChart: (productId) => {
-			return fetch('/chart/isInChart',{
+			return fetch('/chart/isInChart', {
 				method: 'POST',
 				headers: {
 					'Accept': 'application/json',
 					'Content-Type': 'application/json'
-				  },
-				  body: JSON.stringify({
-					  productId: productId,
-					})
+				},
+				body: JSON.stringify({
+					productId: productId,
+				})
 			})
-			.then(res => res.json())
-			.then(res => {
-				if(res.success) {
-					return res.contained;
-				}
-			});
-			
+				.then(res => res.json())
+				.then(res => {
+					if (res.success) {
+						return res.contained;
+					}
+				});
+
 		},
 	}
-	
+
 	return (
 		<div className="App">
 			<Switch>
@@ -203,6 +247,10 @@ export default (props) => {
 					<Editing {...props} functions={functions} states={states} />
 				</PrivateRoute>
 
+				<PrivateRoute path="/balance" isAuthenticated={isAuthenticated}>
+					<Balance {...props} functions={functions} states={states} />
+				</PrivateRoute>
+
 				<Route path="/login" render={(props) => <Login {...props} functions={functions} states={states} />} />
 				<Route path="/" render={(props) => <Login {...props} functions={functions} states={states} />} />
 			</Switch>
@@ -212,22 +260,22 @@ export default (props) => {
 
 // A wrapper for <Route> that redirects to the login screen if you're not yet authenticated.
 const PrivateRoute = ({ children, ...rest }) => {
-	if(rest.isAuthenticated !== undefined && rest.isAuthenticated !== null) {
+	if (rest.isAuthenticated !== undefined && rest.isAuthenticated !== null) {
 		return (
 			<Route
 				{...rest}
 				render={
 					props =>
-						 rest.isAuthenticated ? (
-						children
-					) : (
-						<Redirect
-							to={{
-								pathname: "/login",
-								state: { from: props.location }
-							}}
-						/>
-					)
+						rest.isAuthenticated ? (
+							children
+						) : (
+								<Redirect
+									to={{
+										pathname: "/login",
+										state: { from: props.location }
+									}}
+								/>
+							)
 				}
 			/>
 		);
@@ -238,35 +286,35 @@ const PrivateRoute = ({ children, ...rest }) => {
 
 // ----------------------------- connection to db -----------------------------
 function useGetSectionsFromDb() {
-	const [sections,setSections] = useState([]);
+	const [sections, setSections] = useState([]);
 
-	useEffect(()=> {
-		fetch('/sections/getSections',{
+	useEffect(() => {
+		fetch('/sections/getSections', {
 			method: 'POST',
 		})
-		.then(res => res.json())
-		.then(res => {setSections(res)})
-	},[]);
+			.then(res => res.json())
+			.then(res => { setSections(res) })
+	}, []);
 
-	return [sections,setSections];
+	return [sections, setSections];
 }
 
 function useGetChartFromDb() {
-	const [chart,setChart] = useState([]);
+	const [chart, setChart] = useState([]);
 
-	useEffect(()=> {
-		fetch('/chart/getChart',{
+	useEffect(() => {
+		fetch('/chart/getChart', {
 			method: 'POST',
 			headers: {
 				'Accept': 'application/json',
 				'Content-Type': 'application/json'
-			  }
+			}
 		})
-		.then(res => res.json())
-		.then(res => setChart(res));
-	},[]);
+			.then(res => res.json())
+			.then(res => setChart(res));
+	}, []);
 
-	return [chart,setChart];
+	return [chart, setChart];
 }
 
 function useGetProductsFromDb(currentSection) {
@@ -313,61 +361,61 @@ function useGetProductsFromDb(currentSection) {
 	// 	])
 	// },[])
 
-	useEffect(()=> {
-		fetch('/products/getProducts',{
+	useEffect(() => {
+		fetch('/products/getProducts', {
 			method: 'POST',
 			headers: {
 				'Accept': 'application/json',
 				'Content-Type': 'application/json'
-			  },
-			  body: JSON.stringify({sectionId: currentSection})
+			},
+			body: JSON.stringify({ sectionId: currentSection })
 		})
-		.then(res => res.json())
-		.then(res => {setProducts(res)})
-	},[currentSection]);
+			.then(res => res.json())
+			.then(res => { setProducts(res) })
+	}, [currentSection]);
 
-	return [products,setProducts];
+	return [products, setProducts];
 }
 
 function useAuth() {
 	const [isAuthenticated, setAuthenticated] = useState();
 
 	useEffect(() => {
-		fetch('/user/authenticate', {
+		fetch('/user/authenticate', { //authenticate user using cookies
 			method: 'POST',
 		})
-		.then(res => res.json())
-		.then(res => {
-			if (res.success) {
-				setAuthenticated(true);
-			} else {
-				setAuthenticated(false);
-			}
-		});
+			.then(res => res.json())
+			.then(res => {
+				if (res.success) {
+					setAuthenticated(true);
+				} else {
+					setAuthenticated(false);
+				}
+			});
 	}, []);
 
-	return  [isAuthenticated, setAuthenticated];
+	return [isAuthenticated, setAuthenticated];
 }
 
-function useGetUserData(history) {
+function useGetUserData(history, userToUpdate) {
 	const [user, setUser] = useState(-1);
-	
+
 	useEffect(() => {
 		fetch('/user/getUserData', {
 			method: 'POST',
 		})
-		.then(res => res.json())
-		.then(res => {
-			if (res.success) {
-				setUser({
-					id: res.user.id,
-					username: res.user.username,
-					balance: parseFloat(res.user.balance),
-					privileges: parseInt(res.user.privileges),
-				})
-			}
-		});
-	}, [history.location.pathname]);
+			.then(res => res.json())
+			.then(res => {
+				if (res.success) {
+					setUser({
+						id: res.user.id,
+						username: res.user.username,
+						balance: parseFloat(res.user.balance),
+						privileges: parseInt(res.user.privileges),
+					})
+				}
+			});
+	}, [history.location.pathname, userToUpdate]);
 
 	return [user, setUser];
 }
