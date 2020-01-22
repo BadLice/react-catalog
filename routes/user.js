@@ -125,7 +125,7 @@ router.post('/rechargeCard', (req, res, next) => {
     let errors = {
         number: ('' + req.body.number).length !== 16,
         holder: req.body.holder.trim().length <= 0,
-        expiration: new Date(req.body.expiration) > new Date() || req.body.expiration.trim().length === 0,
+        expiration: new Date(req.body.expiration) < new Date() || req.body.expiration.trim().length === 0,
         cvv: isNaN(req.body.cvv) || req.body.cvv.trim().length === 0,
         amount: Number(req.body.amount) <= 0
     }

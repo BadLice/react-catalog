@@ -1,5 +1,4 @@
 import React, { useState, useRef } from "react";
-import NavBar from './NavBar';
 import HeightTransition from 'react-height-transition';
 
 export default (props) => {

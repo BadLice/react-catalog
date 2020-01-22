@@ -21,14 +21,14 @@ app.use(express.json());
 app.use(cookieParser());
 
 //directory where to store images
-app.use('./client/public/product-images',express.static('product-images'));
+app.use('./client/public/product-images', express.static('product-images'));
 
 
 app.use(cookieSession({
-	name: 'session',
-	secret: process.env.COOKIE_SECRET,
-	signed: true,
-	maxAge: 60 * 60 * 1000 // 1 hour
+    name: 'session',
+    secret: process.env.COOKIE_SECRET,
+    signed: true,
+    maxAge: 60 * 60 * 1000 * 10 // 10 hour
 }));
 
 //---------- ROUTES ----------
@@ -49,52 +49,52 @@ app.use('/uploadImg', uploadImg);
 
 
 log = {
-  err: txt => console.log('\x1b[31m%s\x1b[0m%s', 'ERROR: ',txt),
-  info: txt => console.log('\x1b[32m%s\x1b[0m', 'INFO: ',txt),
-  warn: txt => console.log('\x1b[33m%s\x1b[0m', 'WARN: ',txt),
-  error: txt => console.log('\x1b[31m%s\x1b[0m', 'ERROR: ',txt),
+    err: txt => console.log('\x1b[31m%s\x1b[0m%s', 'ERROR: ', txt),
+    info: txt => console.log('\x1b[32m%s\x1b[0m', 'INFO: ', txt),
+    warn: txt => console.log('\x1b[33m%s\x1b[0m', 'WARN: ', txt),
+    error: txt => console.log('\x1b[31m%s\x1b[0m', 'ERROR: ', txt),
 }
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
-  next(createError(404));
+    next(createError(404));
 });
 
 // error handler
 app.use(function(err, req, res, next) {
-  res.status(err.status || 500);
-	log.err(err);
-	res.send({
-		success: false
-	});
-	res.end();
+    res.status(err.status || 500);
+    log.err(err);
+    res.send({
+        success: false
+    });
+    res.end();
 });
 
-log.warn('----------- SERVER RUNNING ON PORT '+process.env.SERVER_PORT+' -----------');
+log.warn('----------- SERVER RUNNING ON PORT ' + process.env.SERVER_PORT + ' -----------');
 
 var server = app.listen(process.env.SERVER_PORT);
 
 //delete useless images periodically (every 10 minutes)
 setInterval(() => {
-	let sql = "SELECT id FROM product";
-	dbPool.query(sql, [], function (err, allIds) {
-		if(!err) {
-			allIds = allIds.map(o => o.id);
-			let dirs = getDirectories(process.env.PRODUCTS_FILE_DIR);
-			let dirsToDelete = dirs.filter(dir => allIds.indexOf(dir) < 0 && dir!=='default');
-			dirsToDelete.forEach(dir => rimraf(process.env.PRODUCTS_FILE_DIR+dir));
-			if(dirsToDelete.length > 0)
-				log.warn("----- DELETED USELESS DIRECTORIES ----");
-		}
-	});
-}, 10*60*1000);
+    let sql = "SELECT id FROM product";
+    dbPool.query(sql, [], function(err, allIds) {
+        if (!err) {
+            allIds = allIds.map(o => o.id);
+            let dirs = getDirectories(process.env.PRODUCTS_FILE_DIR);
+            let dirsToDelete = dirs.filter(dir => allIds.indexOf(dir) < 0 && dir !== 'default');
+            dirsToDelete.forEach(dir => rimraf(process.env.PRODUCTS_FILE_DIR + dir));
+            if (dirsToDelete.length > 0)
+                log.warn("----- DELETED USELESS DIRECTORIES ----");
+        }
+    });
+}, 10 * 60 * 1000);
 
 
 getDirectories = (source) =>
-  fs.readdirSync(source, { withFileTypes: true })
+    fs.readdirSync(source, { withFileTypes: true })
     .filter(dirent => dirent.isDirectory())
-	.map(dirent => dirent.name)
-	
+    .map(dirent => dirent.name)
+
 getUser = (session) => session.user ? JSON.parse(session.user) : null;
 
 /*
@@ -115,11 +115,11 @@ io.on("connection", socket => {
 
 // socketClientIdMap = []; //0 = socket.id, 1 = client.id
 
-dbPool  = mysql.createPool({
-	host: process.env.DB_HOST,
-	user: process.env.DB_USER,
-	password: process.env.DB_PASS,
-	database: process.env.DB_DB_USED
+dbPool = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_DB_USED
 });
 
 rimraf = (dir_path) => {
@@ -186,26 +186,26 @@ rimraf = (dir_path) => {
 // 	});
 // }
 
-dbPool.execQueryWithSessionValidation = (next,sql,params,callback)  => { //NOT IMPLEMENTED YET
-	dbPool.query(sql, params, function (err, result) {
-		if(err)
+dbPool.execQueryWithSessionValidation = (next, sql, params, callback) => { //NOT IMPLEMENTED YET
+    dbPool.query(sql, params, function(err, result) {
+        if (err)
             next(err);
-     	else
-        	callback(err, result);
-	});
+        else
+            callback(err, result);
+    });
 }
 
 dbPool.execQuery = (next, sql, params, callback) => {
-	dbPool.query(sql, params, function (err, result) {
-		if (err)
-			next(err);
-		else
-			callback(err, result);
-	});
+    dbPool.query(sql, params, function(err, result) {
+        if (err)
+            next(err);
+        else
+            callback(err, result);
+    });
 }
 
 toMySqlDate = (date) => {
-	return new Date(date).toISOString().slice(0, 19).replace('T', ' ');
+    return new Date(date).toISOString().slice(0, 19).replace('T', ' ');
 }
 
 // mapSocketClientIdf = (socketId,clientId) => {

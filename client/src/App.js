@@ -1,34 +1,40 @@
-import React, { useState, useEffect, } from "react";
-import { Switch, Route, Redirect, useHistory } from "react-router-dom";
-import Catalog from './components/Catalog.js';
-import Editing from './components/Editing.js';
-import Login from './components/Login.js';
-import Balance from './components/Balance.js';
+import React, { useEffect, useState } from "react";
+import { Redirect, Route, Switch, useHistory } from "react-router-dom";
 
-import './style/style.css'
-import './style/w3.css'
-import './style/main.css'
-import './style/util.css'
-import "./vendor/bootstrap/css/bootstrap.min.css"
+import Balance from './components/balance';
+import Catalog from './components/catalog';
+import Editing from './components/edit';
+import Cart from './components/cart'
+import Login from './components/login';
+
 import "./fonts/font-awesome-4.7.0/css/font-awesome.min.css"
 import "./fonts/iconic/css/material-design-iconic-font.min.css"
+import './style/main.css'
+import './style/style.css'
+import './style/util.css'
+import './style/w3.css'
 import "./vendor/animate/animate.css"
-import "./vendor/css-hamburgers/hamburgers.min.css"
 import "./vendor/animsition/css/animsition.min.css"
-import "./vendor/select2/select2.min.css"
+import "./vendor/bootstrap/css/bootstrap.min.css"
+import "./vendor/css-hamburgers/hamburgers.min.css"
 import "./vendor/daterangepicker/daterangepicker.css"
-
-const SHA256 = require("crypto-js/sha256");
+import "./vendor/select2/select2.min.css"
 
 export default (props) => {
 	var history = useHistory();
 	const [isAuthenticated, setAuthenticated] = useAuth();
-	let [userToUpdate, setUserToUpdate] = useState(false);
+	const [userToUpdate, setUserToUpdate] = useState(false);
 	const [user, setUser] = useGetUserData(history, userToUpdate);
 	const [currentSection, setCurrentSection] = useState(undefined);
+	const [currentSellingSection, setCurrentSellingSection] = useState(undefined);
 	const [sections, setSections] = useGetSectionsFromDb();
 	const [products, setProducts] = useGetProductsFromDb(currentSection);
-	const [chart, setChart] = useGetChartFromDb();
+	const [cart, setCart] = useGetChartFromDb();
+	const [editingProductId, setEditProductId] = useState('');
+	const [sellingSectionsToUpdate, setSellingSectionsToUpdate] = useState(false);
+	const [sellingProductsToUpdate, setSellingProductsToUpdate] = useState(false);
+	const [sellingSections, setSellingSections] = useGetSellingSectionsFromDb(sellingSectionsToUpdate);
+	const [sellingProducts, setSellingProducts] = useGetSellingProductsFromDb(currentSellingSection, sellingProductsToUpdate);
 
 	//select first section by default
 	useEffect(() => {
@@ -36,17 +42,50 @@ export default (props) => {
 			setCurrentSection(sections[sections.map(s => s.hasProducts).indexOf(1)].id);
 	}, [sections.length]);
 
-	const updateUser = () => setUserToUpdate(!userToUpdate);
-
 	const states = {
 		history: history,
 		user: user, setUser: setUser,
 		currentSection: currentSection, setCurrentSection: setCurrentSection,
 		sections: sections, setSections: setSections,
 		products: products, setProducts: setProducts,
-		chart: chart, setChart: setChart,
+		cart: cart, setCart: setCart,
+		editingProductId: editingProductId, setEditProductId: setEditProductId,
+		sellingSections: sellingSections, setSellingSections: setSellingSections,
+		sellingProducts: sellingProducts, setSellingProducts: setSellingProducts,
+		currentSellingSection: currentSellingSection, setCurrentSellingSection: setCurrentSellingSection
 	}
 	const functions = {
+		updateUser: () => setUserToUpdate(!userToUpdate),
+		updateSellingSections: () => setSellingSectionsToUpdate(!sellingSectionsToUpdate),
+		updateSellingProducts: () => setSellingProductsToUpdate(!sellingProductsToUpdate),
+		saveProduct: (product, image) => {
+			let errors = { //validation
+				moneyErr: product.price === undefined || product.price === '' || product.price === null || isNaN(product.price),
+				avaliableErr: product.avaliable === undefined || product.avaliable === '' || product.avaliable === null || isNaN(product.avaliable) || parseFloat(product.avaliable) % 1 !== 0,
+				nameErr: product.name === undefined || product.name === '' || product.name === null,
+				producerErr: product.producer === undefined || product.producer === '' || product.producer === null,
+				sectionErr: product.sections.length <= 0,
+			}
+
+			if (!errors.nameErr && !errors.producerErr && !errors.moneyErr && !errors.avaliableErr && !errors.sectionErr) {
+				var productFormData = new FormData();
+				productFormData.append('file', image);
+				productFormData.append('product', JSON.stringify(product));
+
+				fetch('/products/saveProduct', {
+					method: 'POST',
+					body: productFormData,
+				})
+					.then(res => res.json())
+					.then(res => {
+						if (res.success) {
+							functions.updateSellingSections();
+							functions.updateSellingProducts();
+						}
+					});
+			}
+			return errors;
+		},
 		login: (username, password) => {
 			fetch('/user/login', { //server tries to login and sets catalog_user cookie
 				method: 'POST',
@@ -114,7 +153,7 @@ export default (props) => {
 							if (res.success) {
 								setProgress(100);
 								setLastAmount(amount);
-								updateUser();
+								functions.updateUser();
 								setErrors({});
 								setActiveTab('recharged');
 							} else {
@@ -156,7 +195,7 @@ export default (props) => {
 		setCurrentSection: (sectionId) => setCurrentSection(sectionId),
 		setProduct: (product, image) => {
 			let p = [...products];
-			let index = p.map(o => o.id).indexOf(product.id);
+			// let index = p.map(o => o.id).indexOf(product.id);
 
 			//validation
 			let errors = {
@@ -184,6 +223,8 @@ export default (props) => {
 							product.id = res.productIt;
 							p.push(product);
 							setProducts(p);
+							functions.updateSellingSections();
+							functions.updateSellingProducts();
 						}
 					})
 			}
@@ -207,9 +248,9 @@ export default (props) => {
 						.then(res => res.json())
 						.then(res => {
 							if (res.success) {
-								let c = [...chart];
+								let c = [...cart];
 								c.push(productId);
-								setChart(c);
+								setCart(c);
 							}
 						})
 				}
@@ -237,18 +278,22 @@ export default (props) => {
 	}
 
 	return (
-		<div className="App">
+		<div className="w3-full-height">
 			<Switch>
-				<PrivateRoute path="/catalog" isAuthenticated={isAuthenticated}>
+				<PrivateRoute path="/catalog" isAuthenticated={isAuthenticated} privileges={2}>
 					<Catalog {...props} functions={functions} states={states} />
 				</PrivateRoute>
 
-				<PrivateRoute path="/editing" isAuthenticated={isAuthenticated}>
+				<PrivateRoute path="/editing" isAuthenticated={isAuthenticated} privileges={1}>
 					<Editing {...props} functions={functions} states={states} />
 				</PrivateRoute>
 
-				<PrivateRoute path="/balance" isAuthenticated={isAuthenticated}>
+				<PrivateRoute path="/balance" isAuthenticated={isAuthenticated} privileges={2}>
 					<Balance {...props} functions={functions} states={states} />
+				</PrivateRoute>
+
+				<PrivateRoute path="/cart" isAuthenticated={isAuthenticated} privileges={2}>
+					<Cart {...props} functions={functions} states={states} />
 				</PrivateRoute>
 
 				<Route path="/login" render={(props) => <Login {...props} functions={functions} states={states} />} />
@@ -267,7 +312,7 @@ const PrivateRoute = ({ children, ...rest }) => {
 				render={
 					props =>
 						rest.isAuthenticated ? (
-							children
+							children.props.states.user.privileges <= rest.privileges ? children : <AccessDeniedPage />
 						) : (
 								<Redirect
 									to={{
@@ -282,6 +327,10 @@ const PrivateRoute = ({ children, ...rest }) => {
 	} else {
 		return <></>;
 	}
+}
+//page rendered if user has not privileges to see current page
+const AccessDeniedPage = () => {
+	return <p>access denied.</p>
 }
 
 // ----------------------------- connection to db -----------------------------
@@ -420,3 +469,50 @@ function useGetUserData(history, userToUpdate) {
 	return [user, setUser];
 }
 
+function useGetSellingSectionsFromDb(toUpdate) {
+	const [sellingsections, setSellingsections] = useState([]);
+
+	useEffect(() => {
+		fetch('/sections/getSellingSections', {
+			method: 'POST',
+			headers: {
+				'Accept': 'application/json',
+				'Content-Type': 'application/json'
+			}
+		})
+			.then(res => res.json())
+			.then(res => {
+				if (res.success) {
+					setSellingsections(res.sections);
+				}
+			});
+	}, [toUpdate])
+
+	return [sellingsections, setSellingsections];
+}
+
+function useGetSellingProductsFromDb(sectionId, toUpdate) {
+	const [sellingProducts, setSellingProducts] = useState(null);
+
+	useEffect(() => {
+		if (sectionId) {
+			fetch('/products/getSellingProducts', {
+				method: 'POST',
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					sectionId: sectionId,
+				})
+			})
+				.then(res => res.json())
+				.then(res => {
+					if (res.success)
+						setSellingProducts(res.products);
+				})
+		}
+	}, [sectionId, toUpdate])
+
+	return [sellingProducts, setSellingProducts];
+}
