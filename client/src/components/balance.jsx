@@ -45,7 +45,7 @@ export default (props) => {
                     <button className={"tab-selector w3-bar-item w3-button " + (isActive('cash') ? ' w3-dark-grey' : '')} onClick={() => setActiveTab('cash')}>Cash</button>
                 </div>
 
-                <HeightTransition initial={0} id="card" activeId={rechargeActiveTab}>
+                <HeightTransition initial={0} id="card" activeId={rechargeActiveTab} easing="in-out">
                     <div className="w3-container city w3-animate-opacity w3-display-container w3-margin w3-light-grey">
                         <table>
                             <tbody>

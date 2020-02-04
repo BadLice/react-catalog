@@ -165,7 +165,7 @@ input[type=number] {
 
 .cart-product-image {
     width: 450px;
-    height: 360px;
+    height: 450px;
     margin: 0;
 }
 
@@ -175,4 +175,58 @@ input[type=number] {
 
 .div-adjacent {
     display: inline-block;
+}
+
+.cart-select-button {
+    padding-top: 7%;
+    vertical-align: middle !important;
+    height: 40px;
+    width: 30px;
+}
+
+.remove-cart-button {
+    position: absolute;
+    bottom: 10px;
+    width: 80px;
+    height: 38px;
+}
+
+.cart-total-footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background-color: red;
+    color: white;
+    position: fixed !important;
+    z-index: 4;
+    text-align: center !important;
+}
+
+.cart-total-footer-margin {
+    margin-bottom: 44px;
+}
+
+.overlay {
+    position: fixed;
+    /* Sit on top of the page content */
+    display: block;
+    height: -300px;
+    /* Hidden by default */
+    width: 100%;
+    /* Full width (cover the whole page) */
+    height: 100%;
+    /* Full height (cover the whole page) */
+    top: 100%;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    /* Black background with opacity */
+    z-index: 2;
+    transition: top 1s;
+}
+
+.overlay.open {
+    top: 0;
 }

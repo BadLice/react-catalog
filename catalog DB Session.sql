@@ -24,3 +24,7 @@ select
 from section
 where
   id = 'd11b763b-5564-4af5-a94f-27d1543fcc0e'
+
+
+
+  select * from chart

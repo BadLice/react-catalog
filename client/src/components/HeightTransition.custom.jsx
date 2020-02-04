@@ -1,11 +1,11 @@
 import React, { useState, useRef } from "react";
 import HeightTransition from 'react-height-transition';
 
-export default (props) => {
+export default ({ initial, ...rest }) => {
     return (
         <>
-            <HeightTransition initial={props.initial}>
-                {(props.id === props.activeId || props.onload) ? props.children : null}
+            <HeightTransition initial={initial} {...rest}>
+                {(rest.id === rest.activeId || rest.onload) ? rest.children : null}
             </HeightTransition>
         </>
     );

@@ -29,7 +29,7 @@ export default (props) => {
 					{
 						!props.canWrite && (
 							<div className="add-chart-button">
-								<input className="w3-button w3-blue" type="button" defaultValue="Add to chart" onClick={() => props.functions.addToChart(props.product.id)} />
+								<input className="w3-button w3-blue" type="button" defaultValue="Add to chart" onClick={() => props.functions.addToChart(props.product)} />
 							</div>
 						)
 					}

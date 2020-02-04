@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useReducer } from "react";
 import { Redirect, Route, Switch, useHistory } from "react-router-dom";
 
 import Balance from './components/balance';
@@ -22,6 +22,7 @@ import "./vendor/select2/select2.min.css"
 
 export default (props) => {
 	var history = useHistory();
+	const [cartTotal, setCartTotal] = useState(0);
 	const [isAuthenticated, setAuthenticated] = useAuth();
 	const [userToUpdate, setUserToUpdate] = useState(false);
 	const [user, setUser] = useGetUserData(history, userToUpdate);
@@ -29,18 +30,13 @@ export default (props) => {
 	const [currentSellingSection, setCurrentSellingSection] = useState(undefined);
 	const [sections, setSections] = useGetSectionsFromDb();
 	const [products, setProducts] = useGetProductsFromDb(currentSection);
-	const [cart, setCart] = useGetChartFromDb();
+	const [cart, setCart] = useGetCartFromDb(isAuthenticated);
 	const [editingProductId, setEditProductId] = useState('');
 	const [sellingSectionsToUpdate, setSellingSectionsToUpdate] = useState(false);
 	const [sellingProductsToUpdate, setSellingProductsToUpdate] = useState(false);
 	const [sellingSections, setSellingSections] = useGetSellingSectionsFromDb(sellingSectionsToUpdate);
 	const [sellingProducts, setSellingProducts] = useGetSellingProductsFromDb(currentSellingSection, sellingProductsToUpdate);
-
-	//select first section by default
-	useEffect(() => {
-		if (!currentSection && sections.length > 0)
-			setCurrentSection(sections[sections.map(s => s.hasProducts).indexOf(1)].id);
-	}, [sections.length]);
+	const [precCartTotal, setPrecCartTotal] = useState(0);
 
 	const states = {
 		history: history,
@@ -48,13 +44,61 @@ export default (props) => {
 		currentSection: currentSection, setCurrentSection: setCurrentSection,
 		sections: sections, setSections: setSections,
 		products: products, setProducts: setProducts,
-		cart: cart, setCart: setCart,
+		cart, dispatchCart: setCart,
 		editingProductId: editingProductId, setEditProductId: setEditProductId,
 		sellingSections: sellingSections, setSellingSections: setSellingSections,
 		sellingProducts: sellingProducts, setSellingProducts: setSellingProducts,
-		currentSellingSection: currentSellingSection, setCurrentSellingSection: setCurrentSellingSection
+		currentSellingSection: currentSellingSection, setCurrentSellingSection: setCurrentSellingSection,
+		cartTotal: cartTotal, setCartTotal: setCartTotal,
+		precCartTotal, setPrecCartTotal,
 	}
 	const functions = {
+		removeFromCart: (productId) => {
+			fetch('/chart/removeFromCart', {
+				method: 'POST',
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ productId })
+			}).then((res) => res.json())
+				.then((res) => {
+					if (res.success) {
+						setCart([...cart].filter((c) => c.id !== productId));
+						functions.calcCartTotal();
+					}
+				})
+		},
+		normalizeAmount: (productId, avaliable) => {
+			fetch('/chart/normalizeAmount', {
+				method: 'POST',
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ productId })
+			}).then(res => res.json()).then(res => res.success && functions.calcCartTotal());
+
+			return avaliable;
+		},
+		setCartAmount: (productId, amount) => {
+			fetch('/chart/setAmount', {
+				method: 'POST',
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ productId, amount: Number(amount.trim()) }),
+			}).then(res => res.json()).then(res => {
+				if (res.success) {
+					let c = [...cart];
+					let i = c.map(o => o.id).indexOf(productId);
+					c[i].amount = Number(amount);
+					setCart(c);
+					functions.calcCartTotal();
+				}
+			});
+		},
 		updateUser: () => setUserToUpdate(!userToUpdate),
 		updateSellingSections: () => setSellingSectionsToUpdate(!sellingSectionsToUpdate),
 		updateSellingProducts: () => setSellingProductsToUpdate(!sellingProductsToUpdate),
@@ -85,6 +129,26 @@ export default (props) => {
 					});
 			}
 			return errors;
+		},
+		selectInCart: (product) => {
+			fetch('/chart/selectInCart', {
+				method: 'POST',
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ productId: product.id, selected: !product.selected })
+			})
+				.then(res => res.json())
+				.then(res => {
+					if (res.success) {
+						let c = [...cart];
+						let i = cart.map(p => p.id).indexOf(product.id);
+						c[i].selected = !product.selected;
+						setCart(c);
+						functions.calcCartTotal();
+					}
+				});
 		},
 		login: (username, password) => {
 			fetch('/user/login', { //server tries to login and sets catalog_user cookie
@@ -195,10 +259,7 @@ export default (props) => {
 		setCurrentSection: (sectionId) => setCurrentSection(sectionId),
 		setProduct: (product, image) => {
 			let p = [...products];
-			// let index = p.map(o => o.id).indexOf(product.id);
-
-			//validation
-			let errors = {
+			let errors = {//validation
 				moneyErr: product.price === undefined || product.price === '' || product.price === null || isNaN(product.price),
 				avaliableErr: product.avaliable === undefined || product.avaliable === '' || product.avaliable === null || isNaN(product.avaliable) || parseFloat(product.avaliable) % 1 !== 0,
 				nameErr: product.name === undefined || product.name === '' || product.name === null,
@@ -230,52 +291,55 @@ export default (props) => {
 			}
 			return errors;
 		},
-		addToChart: (productId) => {
+		addToChart: async (product) => {
 			let p = [...products];
-			let index = p.map(o => o.id).indexOf(productId);
-			functions.isInChart(productId).then((alreadyInChart) => {
-				if (!alreadyInChart) {
-					fetch('/chart/addToChart', {
-						method: 'POST',
-						headers: {
-							'Accept': 'application/json',
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify({
-							productId: productId
-						})
-					})
-						.then(res => res.json())
-						.then(res => {
-							if (res.success) {
-								let c = [...cart];
-								c.push(productId);
-								setCart(c);
-							}
-						})
-				}
-			});
-		},
-		isInChart: (productId) => {
-			return fetch('/chart/isInChart', {
+
+			fetch('/chart/addToChart', {
 				method: 'POST',
 				headers: {
 					'Accept': 'application/json',
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					productId: productId,
+					productId: product.id
 				})
 			})
 				.then(res => res.json())
 				.then(res => {
 					if (res.success) {
-						return res.contained;
+						let c = [...cart];
+						if (res.alreadyInCart) {
+							let i = c.map(p => p.id).indexOf(product.id);
+							c[i].amount++;
+						} else {
+							product.amount = 1;
+							product.selected = true;
+							c.push(product);
+						}
+						setCart(c);
+						functions.calcCartTotal();
 					}
-				});
-
+				})
 		},
+		calcCartTotal: () => {
+			setPrecCartTotal(cartTotal);
+			let tot = 0;
+			cart.forEach((o) => {
+				tot += o.selected ? o.price * o.amount : 0;
+			});
+			setCartTotal(tot);
+		}
 	}
+
+	//select first section by default
+	useEffect(() => {
+		if (!currentSection && sections.length > 0)
+			setCurrentSection(sections[sections.map(s => s.hasProducts).indexOf(1)].id);
+	}, [sections.length]);
+
+	useEffect(() => {
+		functions.calcCartTotal();
+	}, [cart.length])
 
 	return (
 		<div className="w3-full-height">
@@ -348,8 +412,8 @@ function useGetSectionsFromDb() {
 	return [sections, setSections];
 }
 
-function useGetChartFromDb() {
-	const [chart, setChart] = useState([]);
+function useGetCartFromDb(isAuthenticated) {
+	const [cart, setCart] = useState([]);
 
 	useEffect(() => {
 		fetch('/chart/getChart', {
@@ -360,10 +424,14 @@ function useGetChartFromDb() {
 			}
 		})
 			.then(res => res.json())
-			.then(res => setChart(res));
-	}, []);
+			.then(res => {
+				if (res.success) {
+					setCart(res.cart);
+				}
+			})
+	}, [isAuthenticated]);
 
-	return [chart, setChart];
+	return [cart, setCart];
 }
 
 function useGetProductsFromDb(currentSection) {

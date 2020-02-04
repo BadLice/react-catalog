@@ -4,7 +4,7 @@ import { NavLink } from "react-router-dom";
 export default (props) => {
     return (
         <>
-            <div ref={props.nav} className="w3-bar w3-dark-grey w3-sidebar-main" style={{ position: 'fixed', zIndex: 4 }}>
+            <div ref={props.nav} className="w3-bar w3-dark-grey w3-sidebar-main w3-border-bottom w3-border-grey" style={{ position: 'fixed', zIndex: 4 }}>
                 {
                     props.showCategSidebar ?
                         (

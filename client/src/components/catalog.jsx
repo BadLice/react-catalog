@@ -33,7 +33,7 @@ export default (props) => {
                 <CagetSidebar states={props.states} functions={props.functions} sectionsInherited={props.states.sections.filter(s => s.hasProducts)} closeSidebar={closeSidebar} sidebarRef={sidebar} setCurrent={props.states.setCurrentSection} current={props.states.currentSection} />
 
                 <div ref={main} className="w3-sidebar-main w3-full-height">
-                    <div className="w3-container w3-dark-grey2 w3-border w3-border-black navbar-margin product-container" style={{ height: '100%' }}>
+                    <div className="w3-container w3-dark-grey2 navbar-margin product-container" style={{ height: '100%' }}>
                         {
                             props.states.products.map(p =>
                                 <Product key={p.id} product={p} functions={props.functions} />
